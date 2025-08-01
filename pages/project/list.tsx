@@ -46,11 +46,11 @@ export default function ListProjects() {
         fetchProjects();
     }, []);
 
-    const updateProject = async (id: bigint) => {
+    const updateProject = async (id: number) => {
         window.location.href = `/project/update/${id}`;
     }
 
-    const deleteProject = async (id: bigint) => {
+    const deleteProject = async (id: number) => {
         try {
             const res = await fetch('/api/project/delete', {
                 method: 'DELETE',

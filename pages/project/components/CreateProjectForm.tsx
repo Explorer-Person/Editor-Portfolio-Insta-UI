@@ -10,7 +10,7 @@ type Props = {
 
 export default function CreateProjectPage({ mode, initialData }: Props) {
 
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<Project>({
         id: 0,
         title: '',
         description: '',

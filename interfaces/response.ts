@@ -18,7 +18,7 @@ export interface InitialBlogData {
 }
 
 export interface Project {
-    id: bigint;
+    id: number;
     title: string;
     description: string;
     mainImage: string;

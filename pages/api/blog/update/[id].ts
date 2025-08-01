@@ -9,7 +9,7 @@ export const config = {
     },
 };
 
-const proxy = httpProxy.createProxyServer({ target: 'http://localhost:5000', changeOrigin: true });
+const proxy = httpProxy.createProxyServer({ target: `${process.env.NEXT_PUBLIC_SERVER_URL}`, changeOrigin: true });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { id } = req.query;

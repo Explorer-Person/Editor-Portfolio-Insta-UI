@@ -10,7 +10,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!slug) return res.status(400).json({ error: 'Missing slug parameter' });
 
     try {
-        const response = await axios.get(`http://localhost:5000/api/blog/delete/${slug}`);
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/blog/delete/${slug}`);
+
         return res.status(200).json(response.data);
     } catch (error) {
         console.error('Error fetching blog:', error);

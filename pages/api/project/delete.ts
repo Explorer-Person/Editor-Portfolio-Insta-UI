@@ -17,7 +17,7 @@ export default async function handler(
                 });
             }
 
-            const response = await fetch(`http://localhost:5000/api/project/delete`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/project/delete`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',

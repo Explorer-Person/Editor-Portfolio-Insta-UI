@@ -8,7 +8,7 @@ export default async function handler(
 ) {
     if (req.method === 'POST') {
         try {
-            const response = await fetch('http://localhost:5000/api/project/save', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/project/save`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

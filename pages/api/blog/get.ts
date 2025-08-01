@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const response = await axios.get('http://localhost:5000/api/blog/get');
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/blog/get`);
         console.log('Fetched blogs:', response.data);
         return res.status(200).json(response.data);
     } catch (error) {

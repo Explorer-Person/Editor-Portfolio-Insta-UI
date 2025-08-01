@@ -291,7 +291,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
             }
 
             // Send FormData to your actual backend API
-            const uploadRes = await fetch('http://localhost:5000/api/project/uploadMedia', {
+            const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/project/uploadMedia`, {
                 method: 'POST',
                 body: formData,
             });
@@ -426,7 +426,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                                     const target = e.currentTarget;
                                     if (!target.dataset.fallback) {
                                         target.dataset.fallback = 'true';
-                                        target.src = `http://localhost:5000/upload/mainImage/${form.mainImage}`;
+                                        target.src = `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/mainImage/${form.mainImage}`;
                                     } else {
                                         console.warn(`⚠️ Image ${form.mainImage} failed to load on both local and fallback.`);
                                     }
@@ -461,7 +461,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                                         const target = e.currentTarget;
                                         if (!target.dataset.fallbackAttempted) {
                                             target.dataset.fallbackAttempted = 'true';
-                                            target.src = `http://localhost:5000/upload/imageFiles/${img}`;
+                                            target.src = `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/imageFiles/${img}`;
                                         } else {
                                             console.warn(`⚠️ [EditMode] Image "${img}" failed to load.`);
                                             target.style.display = 'none';
@@ -506,7 +506,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                                         const target = e.currentTarget;
                                         if (!target.dataset.fallbackAttempted) {
                                             target.dataset.fallbackAttempted = 'true';
-                                            target.src = `http://localhost:5000/upload/videoFiles/${vid}`;
+                                            target.src = `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/videoFiles/${vid}`;
                                         } else {
                                             console.warn(`⚠️ [EditMode] Video "${vid}" failed to load.`);
                                             target.style.display = 'none';

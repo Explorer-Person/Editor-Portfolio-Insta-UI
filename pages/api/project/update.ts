@@ -8,7 +8,7 @@ export default async function handler(
 ) {
     if (req.method === 'PUT') {
         try {
-            const response = await fetch('http://localhost:5000/api/project/update', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/project/update`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

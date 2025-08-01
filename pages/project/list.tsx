@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { Project } from '@/interfaces/response';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}`;
 
 type RawProject = Omit<Project, 'imageFiles' | 'videoFiles'> & {
     imageFiles: string;

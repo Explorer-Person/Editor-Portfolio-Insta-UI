@@ -104,7 +104,7 @@ export default function BlogContentPage() {
             console.log('🔍 Converted HTML:', html);
 
             html = html
-                .replace(/src="\/upload\//g, 'src="http://localhost:5000/upload/')
+                .replace(/src="\/upload\//g, `src="${process.env.NEXT_PUBLIC_SERVER_URL}/upload/`)
                 .replace(/<img /g, '<img crossorigin="anonymous" ');
 
             setHtmlContent(html);

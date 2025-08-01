@@ -15,7 +15,7 @@ export function InstaMediaCard({ id, link, type, postURL }: InstaContent) {
     const [fallbackToImage, setFallbackToImage] = useState(false);
     const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
-    const srcURL = `http://localhost:5000/api/instagram/media/${id}`;
+    const srcURL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api/instagram/media/${id}`;
 
     const isVideo = useMemo(() => {
         try {
@@ -77,7 +77,7 @@ export default function InstagramContentsPage() {
 
     const fetchContentsFromDB = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/instagram/getfromdb');
+            const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/instagram/getfromdb`);
             const data = await res.json();
             if (res.status === 404 || !Array.isArray(data)) {
                 setContents([]);
@@ -93,7 +93,7 @@ export default function InstagramContentsPage() {
     const triggerInstaSave = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/instagram/savetodb');
+            const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/instagram/savetodb`);
             if (!res.ok) throw new Error('Failed to fetch/scrape');
             await fetchContentsFromDB();
         } catch (err) {

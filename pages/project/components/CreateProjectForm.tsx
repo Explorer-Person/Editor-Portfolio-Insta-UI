@@ -51,7 +51,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
         const { name, value } = e.target;
         setForm(prev => ({ ...prev, [name]: value }));
     };
-    
+
 
     useEffect(() => {
         const loadInitial = async () => {
@@ -180,6 +180,18 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
         });
     };
 
+    const getMediaUrl = (media: string): string => {
+        if (!media) return "/fallback.jpg"; // You can use a local fallback image from /public
+
+        if (media.startsWith("http")) {
+            return media; // Cloudinary or external source
+        }
+
+        // Heroku fallback
+        return `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/project/${media}`;
+    };
+
+
 
 
     const handleSaveAsJson = async () => {
@@ -289,7 +301,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                     {form.mainImage && (
                         <div className="mt-2">
                             <img
-                                src={form.mainImage} // 🟢 Try the direct Cloudinary/mainImage URL first
+                                src={getMediaUrl(form.mainImage)} // 🟢 Try the direct Cloudinary/mainImage URL first
                                 crossOrigin="anonymous"
                                 onError={(e) => {
                                     if (mode !== 'edit') return;
@@ -326,7 +338,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                         {form.imageFiles.map((img: string, idx: number) => (
                             <div key={idx} className="relative">
                                 <img
-                                    src={img} // 🟢 Attempt direct URL (like Cloudinary)
+                                    src={getMediaUrl(img)} // 🟢 Attempt direct URL (like Cloudinary)
                                     crossOrigin="anonymous"
                                     onError={(e) => {
                                         if (mode !== 'edit') return;
@@ -375,7 +387,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                         {form.videoFiles.map((vid, idx) => (
                             <div key={idx} className="relative">
                                 <video
-                                    src={vid} // 🟢 Attempt direct link (e.g., Cloudinary)
+                                    src={getMediaUrl(vid)} // 🟢 Attempt direct link (e.g., Cloudinary)
                                     crossOrigin="anonymous"
                                     onError={(e) => {
                                         if (mode !== 'edit') return;

@@ -1,9 +1,9 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useEffect, useState } from 'react';
 import type { Project } from '@/interfaces/response';
 
-const BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}`;
 
 type RawProject = Omit<Project, 'imageFiles' | 'videoFiles'> & {
     imageFiles: string;

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -11,7 +12,7 @@ type InstaContent = {
     postURL: string;
 };
 
-export function InstaMediaCard({ id, link, type, postURL }: InstaContent) {
+export function InstaMediaCard({ id, link, postURL }: InstaContent) {
     const [fallbackToImage, setFallbackToImage] = useState(false);
     const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
@@ -24,7 +25,7 @@ export function InstaMediaCard({ id, link, type, postURL }: InstaContent) {
             url.searchParams.delete('byteend');
             return url.pathname.endsWith('.mp4');
         } catch (e) {
-            console.warn("Invalid media URL", link);
+            console.warn("Invalid media URL", link, e);
             return false;
         }
     }, [link]);

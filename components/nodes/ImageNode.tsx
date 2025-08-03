@@ -8,7 +8,6 @@ import {
     LexicalNode,
 } from 'lexical';
 import { JSX, useEffect, useRef, useState } from 'react';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 
 
 type Alignment = 'left' | 'center' | 'right';
@@ -27,10 +26,10 @@ type ImageProps = {
     src: string;
     altText: string;
     alignment: Alignment;
-    nodeKey: string; // ✅ required
+    nodeKey?: string; // ✅ required
 };
 
-export default function ImageComponent({ src, altText, alignment, nodeKey }: ImageProps) {
+export default function ImageComponent({ src, altText, alignment }: ImageProps) {
     const ref = useRef<HTMLImageElement | null>(null);
     const [fallbackTriggered, setFallbackTriggered] = useState(false);
 

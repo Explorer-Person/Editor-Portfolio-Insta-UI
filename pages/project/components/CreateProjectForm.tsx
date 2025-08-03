@@ -1,7 +1,8 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { Project } from '@/interfaces/response';
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type Props = {
     mode: 'create' | 'edit';
@@ -50,40 +51,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
         const { name, value } = e.target;
         setForm(prev => ({ ...prev, [name]: value }));
     };
-    const saveProjectJson = async (data: Project) => {
-        if (!data) return;
-
-        const payload = {
-            id: data.id || 0,
-            title: data.title || '',
-            description: data.description || '',
-            mainImage: data.mainImage || '',
-            imageFiles: data.imageFiles || '',
-            videoFiles: data.videoFiles || '',
-            hashtags: data.hashtags || '',
-            githubLink: data.githubLink || '',
-        };
-
-
-        try {
-            const res = await fetch(`/api/project/saveJSON`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const json = await res.json();
-            if (!res.ok || !json.success) {
-                console.error('❌ Failed to save project.json:', json.error);
-            } else {
-                console.log('✅ project.json saved successfully, project id:', data.id);
-            }
-        } catch (err) {
-            console.error('❌ Error saving project.json:', err);
-        }
-    };
+    
 
     useEffect(() => {
         const loadInitial = async () => {

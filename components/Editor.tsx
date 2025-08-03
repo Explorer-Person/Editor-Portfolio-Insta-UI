@@ -293,6 +293,10 @@ export default function Editor({ initialData, mode }: EditorProps) {
         setEditorState(editorState);
     }
 
+    useEffect(()=>{
+        console.log(editorState);
+    },[editorState])
+
     function copyHTMLToClipboard() {
         if (!editorRef.current || typeof navigator === 'undefined' || !navigator.clipboard) {
             console.error('Clipboard API not available');

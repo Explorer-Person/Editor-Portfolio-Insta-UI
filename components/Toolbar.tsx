@@ -50,12 +50,12 @@ export function Toolbar() {
         const formData = new FormData();
         formData.append('image', file);
 
-        const res = await fetch('/api/blog/upload', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/blog/upload`, {
             method: 'POST',
             body: formData,
         });
         if (!res.ok) {
-            console.error('Upload failed');
+            console.error('Upload failed', res);
             return;
         }
 
@@ -66,7 +66,7 @@ export function Toolbar() {
 
         // 2. Insert into editor with correct path
         editor.update(() => {
-            const imageNode = $createImageNode(`/upload/${sanitizedFileName}`, sanitizedFileName, 'center');
+            const imageNode = $createImageNode(`/upload/blog/${sanitizedFileName}`, sanitizedFileName, 'center');
             const paragraphNode = $createParagraphNode();
             const selection = $getSelection();
             if (selection && $isRangeSelection(selection)) {

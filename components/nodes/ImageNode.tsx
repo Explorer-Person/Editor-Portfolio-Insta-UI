@@ -56,7 +56,7 @@ export default function ImageComponent({ src, altText, alignment, nodeKey }: Ima
     };
 
     // ✅ First try full localhost URL, then fallback to client path
-    const currentSrc = fallbackTriggered ? `http://localhost:5000${src}` : src;
+    const currentSrc = fallbackTriggered ? `${process.env.NEXT_PUBLIC_SERVER_URL}${src}` : src;
 
     return (
         <img

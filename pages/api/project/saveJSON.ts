@@ -1,9 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs';
-import path from 'path';
 import { Project } from '@/interfaces/response';
 
-const SAVE_PATH = path.join(process.cwd(), 'public', 'project.json');
 
 
 
@@ -12,17 +9,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
             const data = req.body as Project;
 
-            const id = Date.now();
-            const entry = {
-                ...data,
-                created_at: new Date().toISOString(),
-            };
+            // 📨 Forward to backend
+            const serverRes = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/project/saveJSON`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
 
-            fs.writeFileSync(SAVE_PATH, JSON.stringify(entry, null, 2));
-            return res.status(200).json({ success: true, id });
+            if (!serverRes.ok) {
+                const errorText = await serverRes.text();
+                throw new Error(`Server responded with ${serverRes.status}: ${errorText}`);
+            }
+
+            const serverResponse = await serverRes.json();
+
+
+            return res.status(200).json({ success: true, serverResponse });
         } catch (err: unknown) {
-            console.error('❌ Failed to save project:', err);
-            return res.status(500).json({ success: false, error: 'Failed to save project' });
+            let errorMessage = 'Failed to save project';
+
+            if (err instanceof Error) {
+                errorMessage = err.message;
+                console.error('❌ Failed to save project:', err);
+            } else {
+                console.error('❌ Unknown error:', err);
+            }
+
+            return res.status(500).json({ success: false, error: errorMessage });
+        }
+    }
+    if (req.method === 'GET') {
+        try {
+
+            const { id } = req.query;
+
+            if (!id) {
+                return res.status(400).json({ error: 'Missing project ID in query' });
+            }
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/upload/project/project-${id}.json`, {
+                method: 'GET',
+            });
+
+            const result = await response.json();
+            return res.status(response.status).json(result);
+        } catch (err) {
+            console.error('❌ Error forwarding GET:', err);
+            return res.status(500).json({ error: 'Failed to forward GET' });
         }
     }
 

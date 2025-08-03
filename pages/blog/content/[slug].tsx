@@ -104,7 +104,7 @@ export default function BlogContentPage() {
             console.log('🔍 Converted HTML:', html);
 
             html = html
-                .replace(/src="\/upload\//g, `src="${process.env.NEXT_PUBLIC_SERVER_URL}/upload/`)
+                .replace(/src="\/upload\//g, `src="${process.env.NEXT_PUBLIC_SERVER_URL}/upload/blog/`)
                 .replace(/<img /g, '<img crossorigin="anonymous" ');
 
             setHtmlContent(html);
@@ -119,7 +119,7 @@ export default function BlogContentPage() {
         if (!confirm("Are you sure you want to delete this blog?")) return;
 
         try {
-            const res = await fetch(`/api/blog/delete/${slug}`, {
+            const res = await fetch(`/api/blog/delete/${blog?.id}`, {
                 method: 'DELETE',
             });
 
@@ -134,7 +134,7 @@ export default function BlogContentPage() {
     };
 
     const handleUpdate = () => {
-        router.push(`/blog/edit/${blog?.slug}`);
+        router.push(`/blog/edit/${blog?.id}`);
     };
 
     if (error) return <div className="text-red-600 p-4">Error: {error}</div>;

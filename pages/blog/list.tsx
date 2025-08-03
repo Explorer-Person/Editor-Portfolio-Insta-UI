@@ -65,7 +65,7 @@ export default function BlogListPage() {
                         {/* Left: Blog Cover Image */}
                         <div style={{ width: '100%', height: '200px', backgroundColor: '#eee' }}>
                             <img
-                                src={`${process.env.NEXT_PUBLIC_SERVER_URL}${blog.image}`}
+                                src={`${blog.image}`}
                                 crossOrigin="anonymous"
                                 alt={blog.title}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}

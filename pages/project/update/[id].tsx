@@ -17,7 +17,7 @@ export default function EditProjectPage() {
         console.log('Fetching project with ID:', id);
         const fetchProject = async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/project/get/${id}`);
+                const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/project/getJSON/${id}`);
                 const json = await res.json();
                 console.log('Fetched project data:', json);
                 if (!res.ok || !json.success) throw new Error(json.error || 'Fetch failed');

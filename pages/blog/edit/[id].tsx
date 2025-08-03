@@ -17,17 +17,18 @@ interface Blog {
 
 export default function EditBlogPage() {
     const router = useRouter();
-    const { slug } = router.query;
+    const { id } = router.query;
 
     const [blog, setBlog] = useState<Blog | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!slug) return;
+        if (!id) return;
 
         const fetchBlog = async () => {
             try {
-                const res = await fetch(`/api/blog/getOne/${slug}`);
+                const res = await fetch(`/api/blog/saveJSON?id=${id}`);
+                localStorage.setItem("blogId", id.toString());
                 if (!res.ok) throw new Error('Failed to fetch blog');
                 const data = await res.json();
                 setBlog(data.blog);
@@ -43,7 +44,7 @@ export default function EditBlogPage() {
         };
 
         fetchBlog();
-    }, [slug]);
+    }, [id]);
 
     if (error) return <div className="text-red-600 p-4">Error: {error}</div>;
     if (!blog) return <div className="text-gray-800 p-4">Loading...</div>;

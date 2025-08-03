@@ -20,6 +20,28 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
         hashtags: '',
         githubLink: '',
     });
+
+    useEffect(() => {
+        const { min, max } = { min: 10000, max: 99999 };
+
+        if (typeof window === 'undefined') return;
+
+        const cachedId = localStorage.getItem("projectId");
+
+        const determinedId = cachedId
+            ? parseInt(cachedId)
+            : Math.floor(Math.random() * (max - min + 1)) + min;
+
+        if (!cachedId) {
+            localStorage.setItem("projectId", determinedId.toString());
+        }
+
+        setForm(prev => ({
+            ...prev,
+            id: determinedId,
+        }));
+    }, []);
+
     const [error, setError] = useState<string | null>(null);
 
     const handleChange = (
@@ -42,8 +64,9 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
             githubLink: data.githubLink || '',
         };
 
+
         try {
-            const res = await fetch('/api/project/saveJSON', {
+            const res = await fetch(`/api/project/saveJSON`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -55,7 +78,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
             if (!res.ok || !json.success) {
                 console.error('❌ Failed to save project.json:', json.error);
             } else {
-                console.log('✅ project.json saved successfully');
+                console.log('✅ project.json saved successfully, project id:', data.id);
             }
         } catch (err) {
             console.error('❌ Error saving project.json:', err);
@@ -68,8 +91,9 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
 
             if (mode === 'edit' && initialData) {
                 data = initialData;
+                localStorage.setItem("projectId", data.id.toString())
             } else {
-                const res = await fetch('/project.json');
+                const res = await fetch('/api/save');
                 if (res.ok) {
                     data = await res.json();
                 } else {
@@ -77,34 +101,12 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                     return;
                 }
             }
-            const projectImages = data.imageFiles ? JSON.parse(data.imageFiles) : [];
-            const projectVideos = data.videoFiles ? JSON.parse(data.videoFiles) : [];
+            // const projectImages = data.imageFiles ? JSON.parse(data.imageFiles) : [];
+            // const projectVideos = data.videoFiles ? JSON.parse(data.videoFiles) : [];
 
             console.log('✅ Loaded initial data:', data);
 
-            // Set form with existing imageFiles and videoFiles (no fetch from directories)
-            setForm({
-                id: data.id || 0,
-                title: data.title || '',
-                description: data.description || '',
-                mainImage: data.mainImage || '',
-                imageFiles: projectImages || [],
-                videoFiles: projectVideos || [],
-                hashtags: data.hashtags || '',
-                githubLink: data.githubLink || '',
-            });
 
-            // Save current data to project.json
-            await saveProjectJson({
-                id: data.id || 0,
-                title: data.title || '',
-                description: data.description || '',
-                mainImage: data.mainImage || '',
-                imageFiles: projectImages || [],
-                videoFiles: projectVideos || [],
-                hashtags: data.hashtags || '',
-                githubLink: data.githubLink || '',
-            });
         };
 
         if (mode === 'edit' && initialData) {
@@ -116,7 +118,8 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
     useEffect(() => {
         const loadSavedProject = async () => {
             try {
-                const res = await fetch('/project.json');
+                const id = localStorage.getItem("projectId")
+                const res = await fetch(`/api/project/saveJSON?id=${id}`);
                 if (!res.ok) {
                     console.warn('No existing JSON found.');
                     return;
@@ -125,6 +128,7 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
 
                 const data = await res.json();
                 console.log(data)
+
 
                 setForm({
                     id: data.id || 0,
@@ -159,43 +163,41 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
         return `${timestamp}-${name}`;
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files) return;
 
-        const name = e.target.name;
-
-        console.log('📥 Uploading files for:', name);
-
+        const fieldName = e.target.name as 'imageFiles' | 'videoFiles' | 'mainImage'; // mainImage, imageFiles, videoFiles
         const formData = new FormData();
 
         Array.from(e.target.files).forEach(file => {
             const sanitizedName = sanitizeFilename(file.name);
             const renamedFile = new File([file], sanitizedName, { type: file.type });
-            formData.append('file', renamedFile);
+            formData.append(fieldName, renamedFile); // 🔥 dynamic field
         });
 
-        formData.append('name', name); // Append the name to identify the category
-
-        console.log('📤 Sending FormData:', formData);
-
-        const res = await fetch('/api/project/upload', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/project/upload`, {
             method: 'POST',
             body: formData,
         });
 
         const json = await res.json();
-        if (json.success) {
-            if (name === 'imageFiles' || name === 'videoFiles') {
-                setForm(prev => ({
-                    ...prev,
-                    [name]: [...(prev[name] as string[]), ...json.files],
-                }));
-            } else if (name === 'mainImage') {
-                setForm(prev => ({
-                    ...prev,
-                    mainImage: json.files[0], // only 1 main image
-                }));
-            }
+        if (!res.ok || !json.success) {
+            console.error('❌ Upload failed:', json.error);
+            return;
+        }
+        console.log(form);
+
+        // 🧠 Update form state
+        if (fieldName === 'mainImage') {
+            setForm(prev => ({
+                ...prev,
+                mainImage: json.uploaded.mainImage[0],
+            }));
+        } else {
+            setForm(prev => ({
+                ...prev,
+                [fieldName]: [...(prev[fieldName] as string[]), ...json.uploaded[fieldName]],
+            }));
         }
     };
 
@@ -210,102 +212,6 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
         });
     };
 
-
-    const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files) return;
-        const formData = new FormData();
-
-        Array.from(e.target.files).forEach(file => {
-            const sanitizedName = sanitizeFilename(file.name);
-            const renamedFile = new File([file], sanitizedName, { type: file.type });
-            formData.append('file', renamedFile);
-        });
-
-        formData.append('name', 'videoFiles'); // Append the name to identify the category
-
-        const res = await fetch('/api/project/upload', {
-            method: 'POST',
-            body: formData,
-        });
-
-        const json = await res.json();
-        if (json.success) {
-            setForm(prev => ({
-                ...prev,
-                videoFiles: [...prev.videoFiles, ...json.files],
-            }));
-        }
-    };
-
-    const uploadMediaFromJson = async () => {
-        try {
-
-
-            const imageFilenames = form.imageFiles;
-            const videoFilenames = form.videoFiles;
-            const mainImageName = form.mainImage || "";
-
-            const formData = new FormData();
-
-            // Append images
-            for (const fileName of imageFilenames) {
-                try {
-                    const imageRes = await fetch(`/upload/imageFiles/${fileName}`);
-                    if (!imageRes.ok) {
-                        console.warn(`⚠️ Skipping image ${fileName}, fetch failed`);
-                        continue;
-                    }
-                    const blob = await imageRes.blob();
-                    formData.append('imageFiles', blob, fileName);
-                } catch (err) {
-                    console.warn(`⚠️ Error fetching image ${fileName}:`, err);
-                }
-            }
-
-            // Append videos
-            for (const fileName of videoFilenames) {
-                try {
-                    const videoRes = await fetch(`/upload/videoFiles/${fileName}`);
-                    if (!videoRes.ok) {
-                        console.warn(`⚠️ Skipping video ${fileName}, fetch failed`);
-                        continue;
-                    }
-                    const blob = await videoRes.blob();
-                    formData.append('videoFiles', blob, fileName);
-                } catch (err) {
-                    console.warn(`⚠️ Error fetching video ${fileName}:`, err);
-                }
-            }
-
-            try {
-                const mainImageRes = await fetch(`/upload/mainImage/${mainImageName}`);
-                if (!mainImageRes.ok) {
-                    console.warn(`⚠️ Skipping mainImage ${mainImageName}, fetch failed`);
-                } else {
-                    const blob = await mainImageRes.blob();
-                    formData.append('mainImage', blob, mainImageName);
-                }
-
-            } catch (err) {
-                console.warn(`⚠️ Error fetching mainImage ${mainImageName}:`, err);
-            }
-
-            // Send FormData to your actual backend API
-            const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/project/uploadMedia`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            const result = await uploadRes.json();
-            if (uploadRes.ok) {
-                console.log('✅ Media upload success:', result);
-            } else {
-                console.error('❌ Upload failed:', result.error);
-            }
-        } catch (err) {
-            console.error('❌ uploadMediaFromJson failed:', err);
-        }
-    };
 
 
     const handleSaveAsJson = async () => {
@@ -368,13 +274,9 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
             const json = await res.json();
             if (!res.ok || !json.success) throw new Error(json.error || 'Project save/update failed');
 
-            // ✅ Upload media files
-            await uploadMediaFromJson();
-
-            // ✅ Cleanup local files
-            await fetch('/api/project/cleanup', { method: 'DELETE' });
-            console.log('🧹 Local cleanup complete');
-            window.location.reload(); // Reload to reflect changes
+            localStorage.removeItem("projectId");
+            console.log('project creds removed successfully!')
+            window.location.assign("/project/list"); // Reload to reflect changes
         } catch (err) {
             console.error('❌ handleSaveAndUploadAll error:', err);
             setError(err instanceof Error ? err.message : 'Unexpected error');
@@ -413,22 +315,24 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                         name='mainImage'
                         accept="image/*"
                         multiple
-                        onChange={handleImageUpload}
+                        onChange={handleMediaUpload}
                         className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
                     />
                     {form.mainImage && (
                         <div className="mt-2">
                             <img
-                                src={`/upload/mainImage/${form.mainImage}`}
+                                src={form.mainImage} // 🟢 Try the direct Cloudinary/mainImage URL first
                                 crossOrigin="anonymous"
                                 onError={(e) => {
                                     if (mode !== 'edit') return;
                                     const target = e.currentTarget;
+
                                     if (!target.dataset.fallback) {
                                         target.dataset.fallback = 'true';
-                                        target.src = `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/mainImage/${form.mainImage}`;
+                                        target.src = `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/project/${form.mainImage}`; // 🟡 Fallback to project folder
                                     } else {
-                                        console.warn(`⚠️ Image ${form.mainImage} failed to load on both local and fallback.`);
+                                        console.warn(`⚠️ Fallback also failed: ${form.mainImage}`);
+                                        target.style.display = 'none'; // Or show a placeholder if you prefer
                                     }
                                 }}
                                 alt={`Uploaded ${form.mainImage}`}
@@ -447,24 +351,28 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                         name='imageFiles'
                         accept="image/*"
                         multiple
-                        onChange={handleImageUpload}
+                        onChange={handleMediaUpload}
                         className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
                     />
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-                        {form.imageFiles.map((img, idx) => (
+                        {form.imageFiles.map((img: string, idx: number) => (
                             <div key={idx} className="relative">
                                 <img
-                                    src={`/upload/imageFiles/${img}`}
+                                    src={img} // 🟢 Attempt direct URL (like Cloudinary)
                                     crossOrigin="anonymous"
                                     onError={(e) => {
                                         if (mode !== 'edit') return;
                                         const target = e.currentTarget;
-                                        if (!target.dataset.fallbackAttempted) {
-                                            target.dataset.fallbackAttempted = 'true';
+
+                                        if (!target.dataset.fallbackStage) {
+                                            target.dataset.fallbackStage = 'project'; // 🟡 First fallback
+                                            target.src = `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/project/${img}`;
+                                        } else if (target.dataset.fallbackStage === 'project') {
+                                            target.dataset.fallbackStage = 'imageFiles'; // 🔁 Second fallback
                                             target.src = `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/imageFiles/${img}`;
                                         } else {
-                                            console.warn(`⚠️ [EditMode] Image "${img}" failed to load.`);
-                                            target.style.display = 'none';
+                                            console.warn(`⚠️ [EditMode] Image "${img}" failed to load from all sources.`);
+                                            target.style.display = 'none'; // Or set a placeholder
                                         }
                                     }}
                                     alt={`Uploaded ${img}`}
@@ -492,33 +400,38 @@ export default function CreateProjectPage({ mode, initialData }: Props) {
                         name='videoFiles'
                         accept="video/*"
                         multiple
-                        onChange={handleVideoUpload}
+                        onChange={handleMediaUpload}
                         className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
                     />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                         {form.videoFiles.map((vid, idx) => (
                             <div key={idx} className="relative">
                                 <video
-                                    src={`/upload/videoFiles/${vid}`}
+                                    src={vid} // 🟢 Attempt direct link (e.g., Cloudinary)
                                     crossOrigin="anonymous"
                                     onError={(e) => {
                                         if (mode !== 'edit') return;
                                         const target = e.currentTarget;
-                                        if (!target.dataset.fallbackAttempted) {
-                                            target.dataset.fallbackAttempted = 'true';
+
+                                        if (!target.dataset.fallbackStage) {
+                                            target.dataset.fallbackStage = 'project';
+                                            target.src = `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/project/${vid}`;
+                                        } else if (target.dataset.fallbackStage === 'project') {
+                                            target.dataset.fallbackStage = 'videoFiles';
                                             target.src = `${process.env.NEXT_PUBLIC_SERVER_URL}/upload/videoFiles/${vid}`;
                                         } else {
-                                            console.warn(`⚠️ [EditMode] Video "${vid}" failed to load.`);
-                                            target.style.display = 'none';
+                                            console.warn(`⚠️ [EditMode] Video "${vid}" failed to load from all sources.`);
+                                            target.style.display = 'none'; // ❌ Final fallback
                                         }
                                     }}
                                     controls
                                     className="w-full h-48 object-cover rounded-md border border-gray-300"
                                 />
 
+
                                 <button
                                     type="button"
-                                    onClick={() => handleRemoveMedia('imageFiles', idx)}
+                                    onClick={() => handleRemoveMedia('videoFiles', idx)}
                                     className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs"
                                 >
                                     ✕

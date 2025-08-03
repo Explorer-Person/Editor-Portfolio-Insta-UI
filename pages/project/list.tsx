@@ -93,7 +93,7 @@ export default function ListProjects() {
                         {project.mainImage && (
                             <img
                                 crossOrigin='anonymous'
-                                src={`${BASE_URL}/upload/mainImage/${project.mainImage}`}
+                                src={`${project.mainImage}`}
                                 alt={project.title}
                                 className="w-full h-48 object-cover"
                             />
@@ -129,7 +129,7 @@ export default function ListProjects() {
                                     {selectedProject.imageFiles.map((img, i) => (
                                         <img
                                             key={i}
-                                            src={`${BASE_URL}/upload/imageFiles/${img}`}
+                                            src={`${img}`}
                                             alt={`popup-img-${i}`}
                                             className="w-40 h-28 object-cover rounded border"
                                         />
@@ -146,7 +146,7 @@ export default function ListProjects() {
                                     {selectedProject.videoFiles.map((vid, i) => (
                                         <video
                                             key={i}
-                                            src={`${BASE_URL}/upload/videoFiles/${vid}`}
+                                            src={`${vid}`}
                                             controls
                                             className="w-60 h-36 rounded border"
                                         />

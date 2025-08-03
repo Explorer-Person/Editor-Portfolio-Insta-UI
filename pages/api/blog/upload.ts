@@ -1,8 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { IncomingForm } from 'formidable';
-
+import { IncomingForm, File } from 'formidable';
 import fs from 'fs';
 import path from 'path';
+import FormData from 'form-data';
+import fetch from 'node-fetch';
+import { ReadStream, createReadStream } from 'fs';
 
 // Disable Next.js default body parser
 export const config = {
@@ -11,32 +13,42 @@ export const config = {
     },
 };
 
-const uploadDir = path.join(process.cwd(), 'public', '/upload');
-
-// Ensure the folder exists
-fs.mkdirSync(uploadDir, { recursive: true });
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    const form = new IncomingForm({
-        uploadDir,
-        keepExtensions: true,
-        filename: (name, ext, part) => {
-            const timestamp = Date.now();
-            // Sanitize filename to avoid issues with special characters
-            part.originalFilename = part.originalFilename?.replace(/[^a-zA-Z0-9-_\.]/g, '_') || 'image';
-            // Return a unique filename with timestamp
-            return `${timestamp}-${part.originalFilename}`;
-        },
-    });
+    const form = new IncomingForm({ multiples: true });
 
-    form.parse(req, (err, fields, files) => {
+    form.parse(req, async (err, fields, files) => {
         if (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Upload failed' });
+            console.error('❌ Parse error:', err);
+            return res.status(500).json({ error: 'Failed to parse form data' });
         }
 
-        const file = files.image?.[0];
-        const fileName = path.basename(file?.filepath || '');
-        return res.status(200).json({ fileName });
+        const formData = new FormData();
+
+        // Append single or multiple files
+        const appendFiles = (fileArray: File[] | File | undefined, field: string) => {
+            if (!fileArray) return;
+            const files = Array.isArray(fileArray) ? fileArray : [fileArray];
+            for (const file of files) {
+                formData.append(field, createReadStream(file.filepath), file.originalFilename || 'file');
+            }
+        };
+
+        appendFiles(files.image, 'image');   // for single cover image
+        appendFiles(files.images, 'images'); // for multiple blog images
+
+        try {
+            const response = await fetch('http://localhost:5000/api/blog/upload', {
+                method: 'POST',
+                body: formData as any,
+                headers: (formData as any).getHeaders(),
+            });
+
+            const result = await response.json();
+
+            return res.status(response.status).json(result);
+        } catch (err) {
+            console.error('❌ Forward error:', err);
+            return res.status(500).json({ error: 'Failed to forward to backend' });
+        }
     });
 }

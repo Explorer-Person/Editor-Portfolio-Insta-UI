@@ -79,72 +79,6 @@ type LexicalSerializedNode = {
     children?: LexicalSerializedNode[];
 };
 
-const uploadImagesFromBlogJson = async () => {
-    try {
-        // 1. Load saved blog JSON (assuming JSON includes `content` as Lexical JSON)
-        const res = await fetch('/blog.json');
-        if (!res.ok) throw new Error('Failed to load blog.json');
-
-        const blogData = await res.json();
-        const imageFilenames: string[] = [];
-
-        // 2. Traverse editor JSON content to extract image file names
-        const traverse = (node: LexicalSerializedNode) => {
-            if (node.type === 'image' && node.src) {
-                const parts = node.src.split('/');
-                const fileName = parts[parts.length - 1];
-                imageFilenames.push(fileName);
-            }
-            if (Array.isArray(node.children)) {
-                node.children.forEach(traverse);
-            }
-        };
-
-        if (blogData.content?.root?.children) {
-            blogData.content.root.children.forEach(traverse);
-            const parts = blogData.coverImage.split('/');
-            const fileName = parts[parts.length - 1];
-            imageFilenames.push(fileName)
-        } else {
-            console.warn('⚠️ No editor content found in blogData.content');
-            return;
-        }
-
-        // 3. Create FormData with binary images
-        const formData = new FormData();
-        for (const fileName of imageFilenames) {
-            try {
-                const imageRes = await fetch(`/upload/${encodeURIComponent(fileName)}`);
-                if (!imageRes.ok) {
-                    console.warn(`⚠️ Skipping ${fileName}, fetch failed with status ${imageRes.status}`);
-                    continue;
-                }
-
-                const blob = await imageRes.blob();
-                formData.append('images', blob, fileName);
-            } catch (e) {
-                console.warn(`⚠️ Skipping ${fileName}, fetch error:`, e);
-            }
-        }
-
-        // 4. POST to backend upload route
-        const uploadRes = await fetch('http://localhost:5000/api/blog/upload', {
-            method: 'POST',
-            body: formData,
-        });
-
-        const result = await uploadRes.json();
-        if (uploadRes.ok) {
-            console.log('✅ Uploaded images:', result.uploaded);
-        } else {
-            console.error('❌ Upload error:', result.error);
-        }
-
-    } catch (err) {
-        console.error('❌ Failed to extract/send images:', err);
-    }
-};
-
 
 import JSZip from 'jszip';
 
@@ -216,7 +150,27 @@ export default function Editor({ initialData, mode }: EditorProps) {
         coverImage: '',
     });
 
-    console.log(editorState)
+    useEffect(() => {
+        const { min, max } = { min: 10000, max: 99999 };
+
+        if (typeof window === 'undefined') return;
+
+        const cachedId = localStorage.getItem("blogId");
+
+        const determinedId = cachedId
+            ? parseInt(cachedId)
+            : Math.floor(Math.random() * (max - min + 1)) + min;
+
+        if (!cachedId) {
+            localStorage.setItem("blogId", determinedId.toString());
+        }
+
+        setMeta(prev => ({
+            ...prev,
+            id: determinedId.toString(),
+        }));
+    }, []);
+
     const initialConfig = {
         namespace: 'MyEditor',
         theme,
@@ -232,78 +186,54 @@ export default function Editor({ initialData, mode }: EditorProps) {
         editorRef, // capture editor instance
     };
 
-    async function createJson(content: string, id: string) {
-        // Parse content if it's stringified, otherwise use directly
-        const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
-
-        const blogJson = {
-            id: id,
-            title: parsedContent.title,
-            slug: parsedContent.slug,
-            excerpt: parsedContent.excerpt,
-            date: parsedContent.date,
-            image: parsedContent.image,
-            content: parsedContent.content, // Lexical JSON
-        };
-
-        try {
-            const res = await fetch('/api/blog/save', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(blogJson),
-            });
-
-            const result = await res.json();
-            console.log('✅ blog.json saved:', result.message);
-        } catch (err) {
-            console.error('❌ Failed to save blog.json:', err);
-        }
-    }
-
 
     useEffect(() => {
         if (mode === 'edit' && initialData) {
-            console.log('💬 initialData.image:', initialData.image);
+            console.log('💬 initialData.image:', initialData);
 
             console.log('💬 initialData.id:', initialData.id);
 
+            const strongObj = initialData || meta;
+
             setMeta({
-                id: initialData.id.toString() || '',
-                title: initialData.title || '',
-                slug: initialData.slug || '',
-                excerpt: initialData.excerpt || '',
-                date: initialData.date || '',
-                coverImage: initialData.image?.startsWith('/upload/')
-                    ? initialData.image
-                    : initialData.image?.replace('http://localhost:5000', '') || '',
+                id: strongObj.id.toString(),
+                title: strongObj.title,
+                slug: strongObj.slug,
+                excerpt: strongObj.excerpt,
+                date: strongObj.date,
+                coverImage: strongObj.image,
             });
 
-            createJson(initialData.jsonModel, initialData.id.toString()); // your raw Lexical JSON
         }
     }, [mode, initialData]);
+
+    useEffect(() => {
+        console.log('✅ Meta updated:', meta);
+    }, [meta]);
 
 
 
     useEffect(() => {
-        
+
         const loadSavedJSON = async () => {
             try {
-                const res = await fetch('/api/blog/save');
+                
+                const res = await fetch(`/api/blog/saveJSON?id=${meta.id}`);
                 if (!res.ok) return;
 
-                const data = await res.json();
+                const response = await res.json();
+                const data = response.blog;
+                console.log(data)
                 const editor = editorRef.current;
 
                 if (editor && data.content) {
                     editor.update(() => {
-                        const editorState = editor.parseEditorState(data.content);
+                        const editorState = editor.parseEditorState(JSON.stringify(data.content));
                         editor.setEditorState(editorState);
                     });
                 }
 
-                if(data.image === ''){
+                if (data.image === '') {
                     return
                 }
 
@@ -314,16 +244,25 @@ export default function Editor({ initialData, mode }: EditorProps) {
                     slug: data.slug || '',
                     excerpt: data.excerpt || '',
                     date: data.date || '',
-                    coverImage: data.image || '', // assuming saved field is called `image`
+                    coverImage: data.coverImage || '', // assuming saved field is called `image`
                 });
 
             } catch (err) {
                 console.error('Failed to load saved editor content:', err);
             }
         };
-
         loadSavedJSON();
-    }, []);
+
+    }, [initialData, meta.id]);
+
+    useEffect(() => {
+        if (editorRef.current) {
+            editorRef.current.getEditorState().read(() => {
+                const content = $getRoot().getTextContent();
+                console.log('🧾 Current content:', content);
+            });
+        }
+    }, [editorRef.current]);
 
     const handleMetaSave = async () => {
         if (!editorRef.current) return;
@@ -332,13 +271,13 @@ export default function Editor({ initialData, mode }: EditorProps) {
         const jsonContent = editorRef.current.getEditorState().toJSON();
 
         try {
-            const res = await fetch('/api/blog/save', {
+            const res = await fetch('/api/blog/saveJSON', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ...meta,
-                    image: meta.coverImage, // used in your DB for cover image
-                    content: jsonContent, // Save JSON instead of HTML
+                    ...meta,                      // includes: title, slug, excerpt, date, etc.
+                    coverImage: meta.coverImage,  // ✅ used as the only image field
+                    content: jsonContent,   // ✅ Lexical JSON
                 }),
             });
 
@@ -373,10 +312,17 @@ export default function Editor({ initialData, mode }: EditorProps) {
 
     }
 
+
     const handleSubmit = async () => {
         if (!editorRef.current) return;
 
         const jsonContent = editorRef.current.getEditorState().toJSON();
+
+        const blogJSON = {
+            ...meta,
+            image: meta.coverImage,
+            content: jsonContent, // ✅ Instead of sending as 'jsonModel'
+        };
         let imageNamesArray: string[] = [];
 
         if (jsonContent.root?.type === 'root') {
@@ -390,57 +336,50 @@ export default function Editor({ initialData, mode }: EditorProps) {
             html = $generateHtmlFromNodes(editorRef.current!, null);
         });
 
-        const blogJSON = await fetch('/api/blog/save');
-        if (!blogJSON.ok) return;
-
-        const data = await blogJSON.json();
-
-        const formData = new FormData();
-        formData.append('title', meta.title);
-        formData.append('slug', meta.slug);
-        formData.append('excerpt', meta.excerpt);
-        formData.append('date', meta.date);
-        formData.append('image', meta.coverImage); // cover image
-        formData.append('content', html);
-        formData.append('imageNames', JSON.stringify(imageNamesArray));
-        formData.append('jsonModel', JSON.stringify(data));
-
-
         try {
+            // Prepare payload
+            const blogData = {
+                id: meta.id,
+                title: meta.title,
+                slug: meta.slug,
+                excerpt: meta.excerpt,
+                date: meta.date,
+                image: meta.coverImage,
+                content: html,
+                imageNames: imageNamesArray,
+                jsonModel: blogJSON,
+            };
 
+            let res;
             if (mode === 'edit' && meta.id) {
-                // ✅ UPDATE (PUT) request to your client API
-                const res = await fetch(`/api/blog/update/${meta.id}`, {
+                res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/blog/update/${meta.id}`, {
                     method: 'PUT',
-                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(blogData),
                 });
-
-                const result = await res.json();
-                console.log('✅ Blog updated:', result);
             } else {
-                // ✅ CREATE (POST) request to direct backend
-                const res = await fetch('http://localhost:5000/api/blog/save', {
+                res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/blog/save`, {
                     method: 'POST',
-                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(blogData),
                 });
-
-                const result = await res.json();
-                console.log('✅ Blog created:', result);
             }
 
-            await uploadImagesFromBlogJson();
-
-            await fetch('/api/blog/cleanup', {
-                method: 'POST',
-            });
+            const result = await res.json();
+            console.log('✅ Blog submitted:', result);
 
             editorRef.current.update(() => {
                 const root = $getRoot();
-                root.clear(); // removes all nodes from the editor
+                root.clear(); // Clear editor after save
             });
 
-            window.location.href = '/blog/list'; // Redirect to blog list
+            localStorage.removeItem("blogId");
 
+            window.location.href = '/blog/list'; // Redirect
             setShowMetaModal(false);
         } catch (err) {
             console.error('❌ Error submitting blog:', err);
@@ -496,7 +435,7 @@ export default function Editor({ initialData, mode }: EditorProps) {
                             />
                             <input
                                 type="date"
-                                value={meta.date}
+                                value={meta.date ? meta.date.split('T')[0] : ''}  // ✅ "1212-12-11"
                                 onChange={(e) => setMeta({ ...meta, date: e.target.value })}
                                 className="w-full mb-4 px-3 py-2 border border-gray-300 rounded bg-white text-black"
                             />
@@ -512,31 +451,38 @@ export default function Editor({ initialData, mode }: EditorProps) {
                                     formData.append('image', file);
 
                                     try {
-                                        const res = await fetch('/api/blog/upload', {
+                                        const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/blog/upload`, {
                                             method: 'POST',
                                             body: formData,
                                         });
-                        
 
                                         const data = await res.json();
-                                        const imageUrl = `/upload/${data.fileName}`; // assuming this is your static path
 
-                                        setMeta((prev) => ({
-                                            ...prev,
-                                            coverImage: imageUrl,
-                                        }));
+                                        if (res.ok) {
+                                            const imageName = `${data.fileName}`;
+                                            setMeta(prev => ({ ...prev, coverImage: imageName }));
+                                            console.log('✅ Image uploaded:', imageName);
+                                        } else {
+                                            console.error('❌ Upload failed:', data.error);
+                                        }
                                     } catch (err) {
-                                        console.error('Image upload failed:', err);
+                                        console.error('❌ Network or server error:', err);
                                     }
                                 }}
-                                className="w-full mb-4 px-3 py-2 border border-gray-300 rounded bg-white text-black"
                             />
+
                             {meta.coverImage && (
-                                <img    
-                                    src={`http://localhost:5000${meta.coverImage}`}
+                                <img
+                                    src={`${process.env.NEXT_PUBLIC_SERVER_URL}/upload/blog/${meta.coverImage}`}
                                     alt="Cover Preview"
                                     className="max-h-40 object-cover rounded shadow"
                                     style={{ width: '100%', height: 'auto' }}
+                                    onError={(e) => {
+                                        const fallbackURL = meta.coverImage.startsWith('http')
+                                            ? meta.coverImage
+                                            : `https://res.cloudinary.com/YOUR_CLOUD_NAME/image/upload/${meta.coverImage}`;
+                                        e.currentTarget.src = fallbackURL;
+                                    }}
                                 />
                             )}
 
@@ -577,22 +523,23 @@ export default function Editor({ initialData, mode }: EditorProps) {
                             if (!editorRef.current) return;
 
                             try {
-                                const res = await fetch('/api/blog/save');
+                                const res = await fetch(`/api/blog/saveJSON?id=${meta.id}`);
                                 if (!res.ok) throw new Error('No saved meta');
-                                const data = await res.json();
-
+                                const response = await res.json();
+                                const data = response.blog;
                                 setMeta({
                                     id: data.id || '',
                                     title: data.title || '',
                                     slug: data.slug || '',
                                     excerpt: data.excerpt || '',
                                     date: data.date || '',
-                                    coverImage: data.image || '',
+                                    coverImage: data.coverImage,
                                 });
                             } catch {
                                 // fallback to empty meta
+                                const id = localStorage.getItem("blogId")
                                 setMeta({
-                                    id: '',
+                                    id: id || '',
                                     title: '',
                                     slug: '',
                                     excerpt: '',
